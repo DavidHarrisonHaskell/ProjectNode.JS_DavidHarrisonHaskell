@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EmployeesPage</title>
+</head>
+
+<body onload="EmployeesPage()">
+    <h1 id="Full Name"></h1><br>
+
+    <h2>Employees Page</h2>
+
+    <div id="error_happened"></div><br>
+
+    <button onclick="GenerateEmployeesTable()">Generate a Table About the Employees</button><br><br>
+
+    <button onclick="AddEmployee()">Add Employee</button><br><br>
+
+    Filter by Department:<br>
+    <select id="dropdown_departments" onchange="filter_departments()">
+        <option value="">All Departments</option>
+    </select><br><br>
+
+    <table border="1" id="table1">
+        <thead>
+            <tr>
+                <th>Full Name</th>
+                <th>Department</th>
+                <th>List of Shifts</th>
+            </tr>
+        </thead>
+
+        <tbody id="table1_body">
+
+        </tbody>
+    </table><br><br>
+
+    <button onclick="go_to_ShiftsPage()">Shifts Page</button><br><br>
+
+    <button onclick="go_to_DepartmentPage()">Department Page</button><br><br>
+
+    <button onclick="go_to_UsersPage()">Users Page</button><br><br>
+
+    <button onclick="back_to_LoginPage()">Log Out</button><br><br>
+
+
+    <script>
+        function AddEmployee() {
+            window.location.href = "./NewEmployeePage.html"
+        }
+
+        async function EmployeesPage() {
+            //hide the table when page is loaded
+            var table = document.querySelector('#table1')
+            table ? table.style.display = 'none' : null
+
+            token = localStorage.getItem("token")
+
+            //fetch all users
+            const response = await fetch("http://127.0.0.1:8000/Users", {
+                headers: { token: token }
+            })
+            const AllUsers = await response.json()
+            if (AllUsers.success == false) {
+                // alert("hello")
+                // alert(`error: The following error happened when trying to log in: ${data.error}`)
+                back_to_LoginPage()
+            }
+
+            // find the real name of the user whose username and password was entered in the LoginPage
+            // and display his real name in the EmployeesPage
+            const id_jsonplaceholder = localStorage.getItem("id_jsonplaceholder")
+            AllUsers.Users.forEach((User) => {
+                if (User.id_jsonplaceholder == id_jsonplaceholder) {
+                    document.getElementById("Full Name").innerText = User['Full Name']
+                }
+            })
+
+            localStorage.setItem("Full Name", document.getElementById("Full Name").innerText)
+
+            // make the dropdown list of departments
+            let dropdown_departments = document.getElementById('dropdown_departments')
+            let AllDepartments = await getDepartments()
+            // save the departments' information in localStorage
+            localStorage.setItem("Departments", JSON.stringify(AllDepartments))
+
+            AllDepartments.forEach((department) => {
+                let department_option = document.createElement('option')
+                department_option.value = department.Name
+                department_option.text = department.Name
+                dropdown_departments.appendChild(department_option)
+
+            })
+            // setting EmployeesTableExists to boolean false since it considers an empty string as false
+            localStorage.setItem('EmployeesTableExists', '')
+        }
+
+        async function GenerateEmployeesTable() {
+            //update the number of actions
+            const updateActionsResponse = await updateActions()
+            if (updateActionsResponse.success == false) {
+                return
+            }
+            // this item will help regarding the filter function of the table
+            localStorage.setItem('EmployeesTableExists', 'true')
+
+
+            //show the table
+            var table = document.querySelector('#table1')
+            table ? table.style.display = 'table' : null
+
+            // clear the table
+            document.getElementById("table1_body").innerHTML = ""
+
+            //start updating the table of Employees with information about each employee 
+            table = document.getElementById("table1_body")
+
+            //get information about the employees
+            token = localStorage.getItem("token")
+            const resp = await fetch("http://127.0.0.1:8000/Employees/Information", {
+                headers: { token: token }
+            })
+            const EmployeesInformation = await resp.json()
+
+
+            // get all of the departments in AllDepartments and then while building the table, 
+            // find the correct department and send that department's information
+            // over to the EditDepartmentPage when clicked on
+            let AllDepartments = await getDepartments()
+            for (let i = 0; i < EmployeesInformation.Information.length; i++) {
+                const Employee = EmployeesInformation.Information[i]
+                newTr = document.createElement("tr")
+
+                const td_Full_Name = document.createElement("td")
+                const Full_Name_link = document.createElement("a")
+                const td_Department = document.createElement("td")
+                const Department_link = document.createElement("a")
+                const td_List_of_all_shifts = document.createElement("td")
+
+                Full_Name_link.setAttribute('href', "./EditEmployeePage.html")
+                Full_Name_link.textContent = Employee["Full Name"]
+                Full_Name_link.addEventListener('click', () => {
+                    localStorage.setItem('EmployeeInformation', JSON.stringify(Employee))
+                })
+                td_Full_Name.appendChild(Full_Name_link)
+
+                Department_link.setAttribute('href', "./EditDepartmentPage.html")
+                Department_link.textContent = Employee["Department"]
+                let the_department = AllDepartments.find((department) => department.Name == Employee["Department"])
+                Department_link.addEventListener('click', () => {
+                    localStorage.setItem('DepartmentInformation', JSON.stringify(the_department))
+                    // add a controller for Departments and add controller for Departments/:Department
+                    // where :Department is the name of the department
+                    // then, I can find the information of the department and send it over
+                    // using localStorage to the EditDepartment page
+                })
+                td_Department.appendChild(Department_link)
+
+                td_List_of_all_shifts.innerText = Employee["List of Shifts"].join("\n")
+
+                newTr.appendChild(td_Full_Name)
+                newTr.appendChild(td_Department)
+                newTr.appendChild(td_List_of_all_shifts)
+
+                table.appendChild(newTr)
+            }
+        }
+
+        async function updateActions() {
+            const newHeaders = new Headers()
+            const token = localStorage.getItem("token")
+            newHeaders.append("Content-Type", "application/json")
+            newHeaders.append("token", token)
+
+            const id_jsonplaceholder = localStorage.getItem("id_jsonplaceholder")
+            const date = new Date()
+
+            const resp = await fetch("http://127.0.0.1:8000/Users/Actions", {
+                method: "POST",
+                headers: newHeaders,
+                body: JSON.stringify({
+                    id_jsonplaceholder: id_jsonplaceholder,
+                    time_and_date: date
+                })
+            })
+            const data = await resp.json()
+            if (data.success == false) {
+                alert(data.error)
+                window.location.href = "./LoginPage.html"
+            }
+            return data
+        }
+
+        function back_to_LoginPage() {
+            window.location.href = "./LoginPage.html"
+        }
+
+        async function getDepartments() {
+            const response = await fetch(`http://127.0.0.1:8000/Departments`, {
+                headers: { token: token }
+            })
+            DepartmentInformation = await response.json()
+            return DepartmentInformation.Departments
+        }
+
+        function filter_departments() {
+            let flag = localStorage.getItem('EmployeesTableExists')
+            if (flag) {
+
+                var selected_department = document.getElementById('dropdown_departments').value
+
+                var the_table = document.getElementById('table1')
+                var rows = the_table.rows
+                for (let i = 1; i < rows.length; i++) {
+                    // find the rows that have the selected department and keep those 
+                    // while hiding the rows that do not have the selected department
+                    rows[i].style.display = 'table-row'
+                    if (rows[i].cells[1].innerText !== selected_department) {
+                        rows[i].style.display = 'none'
+                    }
+                    if (selected_department == '') {
+                        rows[i].style.display = 'table-row'
+                    }
+                }
+            }
+
+        }
+
+        function go_to_DepartmentPage() {
+            window.location.href = "./DepartmentPage.html"
+        }
+        function go_to_ShiftsPage() {
+            window.location.href = "./ShiftsPage.html"
+        }
+
+        function go_to_UsersPage() {
+            window.location.href = "./UsersPage.html"
+        }
+
+    </script>
+</body>
+
+</html>

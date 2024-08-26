@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DepartmentPage</title>
+</head>
+
+<body onload="Department()">
+    <h1 id="Full Name"></h1>
+
+
+    <h2>Department Page</h2><br>
+
+    <div id="error_happened"></div><br><br>
+
+    <button onclick="GenerateDepartmentsTable()">Click here to generate a table of Departments</button><br><br>
+
+    <table border="1" id="table1">
+        <thead>
+            <tr>
+                <th>Department</th>
+                <th>Department Manager</th>
+                <th>Employees</th>
+            </tr>
+        </thead>
+        <tbody id="table1_body">
+
+        </tbody>
+    </table><br><br>
+
+    <button onclick="GoToNewDepartment()">New Department</button><br><br>
+
+    <button onclick="window.location.href = './EmployeesPage.html' ">Go to Employees Page</button><br><br>
+
+    <script>
+        function Department() {
+            //insert the user's Full Name into the .html page
+            document.getElementById("Full Name").innerText = localStorage.getItem("Full Name")
+
+            //hide the header of the table until the generate a table of Departments button is clicked
+            var table = document.querySelector('#table1')
+            table ? table.style.display = 'none' : null
+
+
+
+
+        }
+
+        async function GenerateDepartmentsTable() {
+            // update the number of actions
+            const updateActionsResponse = await updateActions()
+                if (updateActionsResponse.success == false) {
+                    return
+                }
+            // clear the table
+            document.getElementById("table1_body").innerHTML = ""
+
+            // show the table
+            var table = document.querySelector('#table1')
+            table ? table.style.display = 'table' : null
+
+            //Plan for generating the DepartmentsTable
+            // DepartmentInformation => result from http://127.0.0.1:8000/Departments
+            // EmployeesInformation => result from http://127.0.0.1:8000/Employees/Information
+            // EmployeesData => result from http://127.0.0.1:8000/Employees
+
+            // To get the Department Name: (loop1 forEach) => const DepartmentName = DepartmentInformation.Departments.forEach((department) => department.Name) will be the Name
+            // To get the manager's full name: (inside loop1 forEach) => const ManagerName = EmployeesInformation.find((employee) => employee.id == department.Manager)
+            // To get the Employees in that department: (inside loop1 forEach) => const EmployeesInDepartment = EmployeesData.filter((employee) => employee.DepartmentID == department._id )
+
+            let DepartmentInformation = await getDepartmentInformation()
+            DepartmentInformation = DepartmentInformation.Departments
+
+            let EmployeesInformation = await getEmployeesInformation()
+            EmployeesInformation = EmployeesInformation.Information
+
+            let EmployeesData = await getEmployeesData()
+            EmployeesData = EmployeesData.Employees
+
+            table_body = document.getElementById("table1_body")
+            DepartmentInformation.forEach((department) => {
+                // making a new row
+                let newTr = document.createElement("tr")
+
+                //setting up the Department and the link to the EditDepartmentPage
+                let td_Department = document.createElement("td")
+                let td_Department_Link = document.createElement("a")
+                td_Department_Link.setAttribute('href', "./EditDepartmentPage.html")
+                td_Department_Link.textContent = department.Name
+                td_Department_Link.addEventListener('click', () => {
+                    localStorage.setItem("DepartmentInformation", JSON.stringify({ "_id": department._id }))
+                })
+                td_Department.appendChild(td_Department_Link)
+                newTr.appendChild(td_Department)
+
+                //setting up the Manager and the link to the EditEmployeePage
+                let Manager = EmployeesInformation.find((employee) => employee.id == department.Manager)
+                let td_Manager = document.createElement("td")
+                if (Manager !== undefined) {
+                    let td_Manager_Link = document.createElement("a")
+                    td_Manager_Link.setAttribute('href', "./EditEmployeePage.html")
+                    td_Manager_Link.textContent = Manager["Full Name"]
+                    td_Manager_Link.addEventListener('click', () => {
+                        localStorage.setItem("EmployeeInformation", JSON.stringify({ "id": department.Manager }))
+                    })
+                    td_Manager.appendChild(td_Manager_Link)
+                }
+                newTr.appendChild(td_Manager)
+
+                //setting up the Employees and the link to the EditEmployeePage
+                let EmployeesInDepartment = EmployeesData.filter((employee) => employee.DepartmentID == department._id)
+                let td_Employees = document.createElement("td")
+                // set up an unordered list of the department's employees' names which have links to EditEmployeePage.html
+                let td_Employees_ul = document.createElement("ul")
+                if (EmployeesInDepartment.length > 0) {
+                    EmployeesInDepartment.forEach((employee) => {
+                        let li = document.createElement("li")
+                        let li_Link = document.createElement("a")
+                        li_Link.setAttribute('href', "./EditEmployeePage.html")
+                        li_Link.textContent = `${employee["First Name"]} ${employee["Last Name"]}`
+                        li_Link.addEventListener('click', () => {
+                            localStorage.setItem("EmployeeInformation", JSON.stringify({ "id": employee._id }))
+                        })
+                        li.appendChild(li_Link)
+                        td_Employees_ul.appendChild(li)
+                    })
+                }
+                td_Employees.appendChild(td_Employees_ul)
+                newTr.appendChild(td_Employees)
+
+                let table = document.getElementById("table1_body")
+                table_body.appendChild(newTr)
+            })
+        }
+
+        async function getDepartmentInformation() {
+            token = localStorage.getItem("token")
+            const response = await fetch('http://127.0.0.1:8000/Departments', {
+                headers: { token: token }
+            })
+            const DepartmentInformation = await response.json()
+            if (DepartmentInformation.success == false) {
+                const error_text = document.getElementById("error_happened")
+                error_text.innerText = `error: The following error happened when trying to log in: ${DepartmentInformation.error}`
+                return
+            }
+            return DepartmentInformation
+        }
+
+        async function getEmployeesInformation() {
+            token = localStorage.getItem("token")
+            const response = await fetch('http://127.0.0.1:8000/Employees/Information', {
+                headers: { token: token }
+            })
+            const EmployeesInformation = await response.json()
+            if (EmployeesInformation.success == false) {
+                const error_text = document.getElementById("error_happened")
+                error_text.innerText = `error: The following error happened when trying to log in: ${EmployeesInformation.error}`
+                return
+            }
+            return EmployeesInformation
+        }
+
+
+
+        async function getEmployeesData() {
+            token = localStorage.getItem("token")
+            const response = await fetch('http://127.0.0.1:8000/Employees', {
+                headers: { token: token }
+            })
+            const EmployeesData = await response.json()
+            if (EmployeesData.success == false) {
+                const error_text = document.getElementById("error_happened")
+                error_text.innerText = `error: The following error happened when trying to log in: ${EmployeesData.error}`
+                return
+            }
+            return EmployeesData
+        }
+
+        async function updateActions() {
+            const newHeaders = new Headers()
+            const token = localStorage.getItem("token")
+            newHeaders.append("Content-Type", "application/json")
+            newHeaders.append("token", token)
+
+            const id_jsonplaceholder = localStorage.getItem("id_jsonplaceholder")
+            const date = new Date()
+
+            const resp = await fetch("http://127.0.0.1:8000/Users/Actions", {
+                method: "POST",
+                headers: newHeaders,
+                body: JSON.stringify({
+                    id_jsonplaceholder: id_jsonplaceholder,
+                    time_and_date: date
+                })
+            })
+            const data = await resp.json()
+            if (data.success == false) {
+                alert(data.error)
+                window.location.href = "./LoginPage.html"
+            }
+            return data
+        }
+
+
+        function GoToNewDepartment() {
+            window.location.href = "./NewDepartmentPage.html"
+        }
+
+
+    </script>
+</body>

@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NewDepartmentPage</title>
+</head>
+
+<body onload="NewDepartment()">
+    <h1 id="Full Name"></h1>
+
+    <h2>Add Department</h2><br>
+
+    <div id="error_happened"></div><br>
+
+
+    <form id="PostDepartmentForm">
+        Name: <input type="text" id="Name" /><br><br>
+
+        Note: Only an employee who is not currently a manager will be able to be made a manager of the new
+        department.<br>
+        If you wish to switch an existing manager to this department, please first edit his department's information<br>
+        by choosing a different manager. Then you can go back to this page and select him as the manager of the<br>
+        new department.<br><br>
+
+        Manager:
+        <select id="Manager">
+            <option value="">Select a Manager</option>
+        </select><br><br>
+
+        <button type="submit">Add Department</button><br><br>
+    </form>
+
+    <button onclick="window.location.href = './DepartmentPage.html' ">Cancel</button>
+
+    <script>
+        async function NewDepartment() {
+            // add real name of the user to the page
+            document.getElementById("Full Name").innerText = localStorage.getItem("Full Name")
+
+            //retrieve the token
+            token = localStorage.getItem("token")
+
+            // add an option for each potential manager to the dropdown list
+            // and filter out the employees who are already managers
+            let DepartmentInformation = await getDepartmentInformation() // fetch information about each department
+            let ManagerIDs = DepartmentInformation.map((department) => department.Manager) // get an array of the IDs of the managers
+            let EmployeesInformation = await getEmployeesInformation() // fetch information of each employee
+
+            let dropdown_nonManagers = document.getElementById("Manager")
+            let nonManagers = EmployeesInformation.filter((employee) => !ManagerIDs.includes(employee.id))
+            nonManagers.forEach((nonManager) => {
+                let nonManager_option = document.createElement('option')
+                nonManager_option.value = nonManager.id
+                nonManager_option.text = nonManager["Full Name"]
+                dropdown_nonManagers.appendChild(nonManager_option)
+            })
+
+            // submit the form when the Add Employee button is clicked
+            document.getElementById("PostDepartmentForm").addEventListener('submit', async (event) => {
+                event.preventDefault()
+                const updateActionsResponse = await updateActions()
+                if (updateActionsResponse.success == true) {
+                    const message = await PostDepartment()
+                    message ? alert(message) : null
+                    window.location.href = './DepartmentPage.html'
+                }
+            })
+        }
+
+
+        async function PostDepartment() {
+            // alert("PostDepartment")
+            // send a POST request to the server to updated the New Department in the database
+            var requestBody = {}
+            let Name = document.getElementById("Name").value
+            let Manager = document.getElementById("Manager").value
+            if (Name !== "" && Manager !== "") {
+                requestBody.Name = Name
+                requestBody.Manager = Manager
+
+                const response = await fetch('http://127.0.0.1:8000/Departments', {
+
+                    method: "POST",
+                    headers: { token: token, "Content-Type": "application/json" },
+
+                    body: JSON.stringify(requestBody),
+                    redirect: "follow"
+                })
+                const the_response = await response.json()
+                if (the_response.success == false) {
+                    const error_text = document.getElementById("error_happened")
+                    error_text.innerText = `error: The following error happened when trying to log in: ${the_response.error}`
+                    return
+                }
+                return the_response.Department
+            } else {
+                alert("Form was not properly filled out")
+                return
+            }
+        }
+
+        async function getDepartmentInformation() {
+            token = localStorage.getItem("token")
+            const response = await fetch('http://127.0.0.1:8000/Departments', {
+                headers: { token: token }
+            })
+            const DepartmentInformation = await response.json()
+            if (DepartmentInformation.success == false) {
+                const error_text = document.getElementById("error_happened")
+                error_text.innerText = `error: The following error happened when trying to log in: ${DepartmentInformation.error}`
+                return
+            }
+            return DepartmentInformation.Departments
+        }
+
+        async function getEmployeesInformation() {
+            token = localStorage.getItem("token")
+            const response = await fetch('http://127.0.0.1:8000/Employees/Information', {
+                headers: { token: token }
+            })
+            const EmployeesInformation = await response.json()
+            if (EmployeesInformation.success == false) {
+                const error_text = document.getElementById("error_happened")
+                error_text.innerText = `error: The following error happened when trying to log in: ${EmployeesInformation.error}`
+                return
+            }
+            return EmployeesInformation.Information
+        }
+
+        async function updateActions() {
+            const newHeaders = new Headers()
+            const token = localStorage.getItem("token")
+            newHeaders.append("Content-Type", "application/json")
+            newHeaders.append("token", token)
+
+            const id_jsonplaceholder = localStorage.getItem("id_jsonplaceholder")
+            const date = new Date()
+
+            const resp = await fetch("http://127.0.0.1:8000/Users/Actions", {
+                method: "POST",
+                headers: newHeaders,
+                body: JSON.stringify({
+                    id_jsonplaceholder: id_jsonplaceholder,
+                    time_and_date: date
+                })
+            })
+            const data = await resp.json()
+            if (data.success == false) {
+                alert(data.error)
+                window.location.href = "./LoginPage.html"
+            }
+            return data
+        }
+
+
+
+    </script>
+</body>

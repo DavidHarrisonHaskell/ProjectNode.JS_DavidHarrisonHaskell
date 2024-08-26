@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UsersPage</title>
+</head>
+
+<body onload="UsersPage()">
+    <h1 id="Full Name"></h1>
+
+    <h2>Users</h2>
+
+    <button onclick="GenerateUsersTable()">Click here to generate a table of users</button><br><br>
+
+    <table border="1" id="table1">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Maximum Actions Allowed</th>
+                <th>Current Actions Allowed Today</th>
+            </tr>
+        </thead>
+
+        <tbody id="table1_body">
+
+        </tbody>
+    </table><br><br>
+
+    <button onclick="window.location.href = './EmployeesPage.html' ">Go to Employees Page</button><br><br>
+
+    <div id="error_happened"></div><br>
+    <script>
+        async function UsersPage() {
+            // add real name of the user to the page
+            document.getElementById("Full Name").innerText = localStorage.getItem("Full Name")
+
+            //retrieve the token
+            token = localStorage.getItem("token")
+
+            //hide the header of the table until the generate a table of Departments button is clicked
+            var table = document.querySelector('#table1')
+            table ? table.style.display = 'none' : null
+        }
+
+
+        async function GenerateUsersTable() {
+
+            // update the number of actions
+            const updateActionsResponse = await updateActions()
+            if (updateActionsResponse.success == false) {
+                return
+            }
+
+            //fetch the information about the users from the MongoDB database
+            const Users = await getUsersInformation()
+
+            // clear the table
+            document.getElementById("table1_body").innerHTML = ""
+
+            // show the table
+            var table = document.querySelector('#table1')
+            table ? table.style.display = 'table' : null
+
+            //update the table with details about each User
+            table_body = document.getElementById("table1_body")
+            Users.forEach(user => {
+                const tr = document.createElement("tr")
+
+                const td_Name = document.createElement("td")
+                const td_Maximum_Actions_Allowed = document.createElement("td")
+                const td_Current_Actions_Allowed_Today = document.createElement("td")
+
+                td_Name.innerText = user["Full Name"]
+                td_Maximum_Actions_Allowed.innerText = user["Num Of Actions"]
+                td_Current_Actions_Allowed_Today.innerText = user["Variable_Num_Of_Actions"]
+
+                tr.appendChild(td_Name)
+                tr.appendChild(td_Maximum_Actions_Allowed)
+                tr.appendChild(td_Current_Actions_Allowed_Today)
+
+                table_body.appendChild(tr)
+            });
+        }
+
+        async function getUsersInformation() {
+            token = localStorage.getItem("token")
+            const response = await fetch('http://127.0.0.1:8000/Users', {
+                headers: { token: token }
+            })
+            const Users = await response.json()
+            if (Users.success == false) {
+                const error_text = document.getElementById("error_happened")
+                error_text.innerText = `error: The following error happened when trying to log in: ${Users.error}`
+                return
+            }
+
+            return Users.Users
+        }
+
+        async function updateActions() {
+            const newHeaders = new Headers()
+            const token = localStorage.getItem("token")
+            newHeaders.append("Content-Type", "application/json")
+            newHeaders.append("token", token)
+
+            const id_jsonplaceholder = localStorage.getItem("id_jsonplaceholder")
+            const date = new Date()
+
+            const resp = await fetch("http://127.0.0.1:8000/Users/Actions", {
+                method: "POST",
+                headers: newHeaders,
+                body: JSON.stringify({
+                    id_jsonplaceholder: id_jsonplaceholder,
+                    time_and_date: date
+                })
+            })
+            const data = await resp.json()
+            if (data.success == false) {
+                console.log(data.error)
+                window.location.href = "./LoginPage.html"
+            }
+            return data
+        }
+
+
+    </script>
+</body>

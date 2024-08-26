@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ShiftsPage</title>
+</head>
+
+<body onload="ShiftsPage()">
+
+    <h1 id="Full Name"></h1>
+
+    <h2>Shifts</h2>
+
+    <div id="error_happened"></div><br>
+
+    <strong><u>Create New Shift</u></strong><br><br>
+
+    <form id="PostShiftForm">
+        Date: <input type="date" id="PostShiftFormDate" value="" /><br><br>
+
+        Starting Hour: <input type="number" id="PostShiftFormStartingHour" value="" min="0" max="24" /><br><br>
+
+        Ending Hour: <input type="number" id="PostShiftFormEndingHour" value="" min="0" max="24" /><br><br>
+
+        <button type="submit">Create New Shift</button>
+    </form><br><br>
+
+
+    <strong><u>Change Existing Shift</u></strong><br><br>
+    <!-- Choose from a dropdwon list -->
+    <form id="ChangeShiftForm">
+
+        Choose a Shift:
+        <select id="ChangeShiftFormSelectShift">
+            <option value="">Select Shift</option>
+        </select><br><br>
+
+        Note: Only fill out the fields which you wish to change<br>
+
+        Date: <input type="date" id="ChangeShiftFormDate" value="" /><br><br>
+
+        Starting Hour: <input type="number" id="ChangeShiftFormStartingHour" value="" min="0" max="24" /><br><br>
+
+        Ending Hour: <input type="number" id="ChangeShiftFormEndingHour" value="" min="0" max="24" /><br><br>
+
+        <button type="submit">Change Existing Shift</button>
+    </form><br><br>
+
+    <strong><u>Allocate Employee to a Given Shift</u></strong><br><br>
+
+    <form id="AllocateEmployeeToShiftForm">
+        Choose an Employee:
+        <select id="AllocateEmployeeToShiftFormSelectEmployee" onchange="FilterShifts()">
+            <option value="">Select Employee</option>
+        </select><br><br>
+        Choose a Shift:
+        <select id="AllocateEmployeeToShiftFormSelectShift">
+            <option value="">Select Shift</option>
+        </select><br>
+        Note: The shifts which the employee currently has will not be shown<br><br>
+
+        <button>Allocate Employee to Selected Shift</button>
+    </form><br><br>
+
+    <button onclick="window.location.href = './EmployeesPage.html' ">Go to Employees Page</button><br><br>
+
+
+    <script>
+        async function ShiftsPage() {
+            // add real name of the user to the page
+            document.getElementById("Full Name").innerText = localStorage.getItem("Full Name")
+
+            //retrieve the token
+            token = localStorage.getItem("token")
+
+            // submit the form when the Create New Shift button is clicked
+            document.getElementById("PostShiftForm").addEventListener('submit', async (event) => {
+                event.preventDefault()
+                const message = await PostShift()
+                const updateActionsResponse = await updateActions()
+                if (updateActionsResponse.success == true) {
+                    alert("The shift was successfully added")
+                    window.location.href = "./EmployeesPage.html"
+                }
+            })
+
+            // submit the form when the Change Existing Shift button is clicked
+            document.getElementById("ChangeShiftForm").addEventListener('submit', async (event) => {
+                event.preventDefault()
+                const message = await ChangeShift()
+                const updateActionsResponse = await updateActions()
+                if (updateActionsResponse.success == true) {
+                    alert("Shift was successfully changed")
+                    window.location.href = "./EmployeesPage.html"
+
+                }
+            })
+
+            // submit the form when the Change Existing Shift button is clicked
+            document.getElementById("AllocateEmployeeToShiftForm").addEventListener('submit', async (event) => {
+                event.preventDefault()
+                const message = await AllocateEmployee()
+                const updateActionsResponse = await updateActions()
+                if (updateActionsResponse.success == true) {
+                    alert("Shift was successfully registered to the employee")
+                    window.location.href = "./EmployeesPage.html"
+                }
+            })
+
+            //get a list of all of the shifts
+            let currentShifts = await getShifts()
+            //sort the shifts by date
+            currentShifts = currentShifts.sort((a, b) => new Date(a.Date) - new Date(b.Date))
+            //create dropdown options for each shift and allow the user to choose which shift he or she would like to edit
+            let ChangeShiftFormSelectShift = document.getElementById("ChangeShiftFormSelectShift")
+            let AllocateEmployeeToShiftFormSelectShift = document.getElementById("AllocateEmployeeToShiftFormSelectShift")
+            currentShifts.forEach((shift) => {
+                // the id of a given shift will be the value of the option
+                let shift_option_1 = document.createElement('option')
+                shift_option_1.value = shift._id
+
+                // extracting the date information of the shift from the shift object
+                let shiftDate = new Date(shift.Date)
+                let shift_year = shiftDate.getUTCFullYear()
+                let shift_month = shiftDate.getUTCMonth() + 1
+                let shift_day = shiftDate.getUTCDate()
+                shift_option_1.text = `${shift_year}-${shift_month}-${shift_day}: ${shift?.["Starting Hour"]} to ${shift?.["Ending Hour"]}`
+                ChangeShiftFormSelectShift.appendChild(shift_option_1)
+
+                // add the shift to the Allocate Employee dropdown of shifts as well
+                let shift_option_2 = document.createElement('option')
+                shift_option_2.value = shift_option_1.value
+                shift_option_2.text = shift_option_1.text
+                AllocateEmployeeToShiftFormSelectShift.appendChild(shift_option_2)
+            })
+
+
+            // get a list of all of the employees
+            let currentEmployees = await getEmployeesInformation()
+            localStorage.setItem("currentEmployees", JSON.stringify(currentEmployees))
+            // sort the employees by Last Name
+            currentEmployees = currentEmployees.sort((a, b) => {
+                const firstLastName = a["Last Name"]
+                const nextLastName = b["Last Name"]
+                if (firstLastName < nextLastName) return -1
+                if (firstLastName > nextLastName) return 1
+                return 0
+            })
+
+            // add options to the AllocateEmployeeToShiftFormSelectEmployee dropdown
+            let AllocateEmployeeToShiftFormSelectEmployee = document.getElementById("AllocateEmployeeToShiftFormSelectEmployee")
+            currentEmployees.forEach((employee) => {
+                let employee_option = document.createElement('option')
+                employee_option.text = `${employee["First Name"]} ${employee["Last Name"]}`
+                employee_option.value = employee._id
+                AllocateEmployeeToShiftFormSelectEmployee.appendChild(employee_option)
+            })
+        }
+
+        async function PostShift() {
+            var requestBody = {
+                "Date": "",
+                "Starting Hour": "",
+                "Ending Hour": ""
+            }
+            requestBody.Date = document.getElementById("PostShiftFormDate").value
+            requestBody["Starting Hour"] = document.getElementById("PostShiftFormStartingHour").value
+            requestBody["Ending Hour"] = document.getElementById("PostShiftFormEndingHour").value
+
+            //ensuring that every field is filled out
+            if (requestBody.Date !== "" && requestBody["Starting Hour"] !== "" && requestBody["Ending Hour"] !== "") {
+                const response = await fetch('http://127.0.0.1:8000/Shifts', {
+
+                    method: "POST",
+                    headers: { token: token, "Content-Type": "application/json" },
+
+                    body: JSON.stringify(requestBody),
+                    redirect: "follow"
+                })
+                const the_response = await response.json()
+                if (the_response.success == false) {
+                    const error_text = document.getElementById("error_happened")
+                    error_text.innerText = `error: The following error happened when trying to log in: ${the_response.error}`
+                    return
+                }
+                return the_response.Shift
+            } else {
+                alert("The form was not properly filled out")
+            }
+
+        }
+
+        async function ChangeShift() {
+            const shiftID = document.getElementById("ChangeShiftFormSelectShift").value
+
+            // develop the the requestBody of the PUT request
+            const requestBody = {}
+            const the_Date = document.getElementById("ChangeShiftFormDate").value
+            const the_Starting_Hour = document.getElementById("ChangeShiftFormStartingHour").value
+            const the_Ending_Hour = document.getElementById("ChangeShiftFormEndingHour").value
+
+            // only put a field in the requestBody if that field has a value other than "" in it
+            the_Date !== "" ? requestBody.Date = the_Date : null
+            the_Starting_Hour !== "" ? requestBody["Starting Hour"] = the_Starting_Hour : null
+            the_Ending_Hour !== "" ? requestBody["Ending Hour"] = the_Ending_Hour : null
+
+            if (shiftID !== "" && Object.keys(requestBody).length !== 0) {
+
+                const response = await fetch(`http://127.0.0.1:8000/Shifts/${shiftID}`, {
+
+                    method: "PUT",
+                    headers: { token: token, "Content-Type": "application/json" },
+
+                    body: JSON.stringify(requestBody),
+                    redirect: "follow"
+                })
+                const the_response = await response.json()
+                if (the_response.success == false) {
+                    const error_text = document.getElementById("error_happened")
+                    error_text.innerText = `error: The following error happened when trying to log in: ${the_response.error}`
+                    return
+                }
+                return the_response.Shift
+            } else {
+                alert("The form was not properly filled out")
+            }
+        }
+
+        async function AllocateEmployee() {
+            const EmployeeID = document.getElementById("AllocateEmployeeToShiftFormSelectEmployee").value
+            const Shift = document.getElementById("AllocateEmployeeToShiftFormSelectShift").value
+
+            if (EmployeeID !== "" && Shift !== "") {
+
+                let requestBody = {}
+                //get information of all of the employees from the local storage
+                const currentEmployees = JSON.parse(localStorage.getItem("currentEmployees"))
+                // include the original shifts of the employee along with the selected shift in the request body
+                const selectedEmployee = currentEmployees.find((employee) => employee._id == EmployeeID)
+                updatedShifts = [...selectedEmployee.ShiftsID, Shift]
+                requestBody.ShiftsID = updatedShifts
+
+                const response = await fetch(`http://127.0.0.1:8000/Employees/Information/${EmployeeID}`, {
+
+                    method: "PUT",
+                    headers: { token: token, "Content-Type": "application/json" },
+
+                    body: JSON.stringify(requestBody),
+                    redirect: "follow"
+                })
+                const the_response = await response.json()
+                if (the_response.success == false) {
+                    const error_text = document.getElementById("error_happened")
+                    error_text.innerText = `error: The following error happened when trying to log in: ${the_response.error}`
+                    return
+                }
+                return the_response.Employee
+            } else {
+                alert("The form was not properly filled out")
+            }
+        }
+
+
+        async function getShifts() {
+            token = localStorage.getItem("token")
+            const response = await fetch('http://127.0.0.1:8000/Shifts', {
+                headers: { token: token }
+            })
+            const Shifts = await response.json()
+            if (Shifts.success == false) {
+                const error_text = document.getElementById("error_happened")
+                error_text.innerText = `error: The following error happened when trying to log in: ${Shifts.error}`
+                return
+            }
+            return Shifts.Shifts
+        }
+
+        async function getEmployeesInformation() {
+            token = localStorage.getItem("token")
+            const response = await fetch('http://127.0.0.1:8000/Employees', {
+                headers: { token: token }
+            })
+            const Employees = await response.json()
+            if (Employees.success == false) {
+                const error_text = document.getElementById("error_happened")
+                error_text.innerText = `error: The following error happened when trying to log in: ${Employees.error}`
+                return
+            }
+
+            return Employees.Employees
+        }
+
+        function FilterShifts() {
+            // filter the shifts to only include shifts which the selected employee does not have
+
+            //get information of all of the employees from the local storage
+            const currentEmployees = JSON.parse(localStorage.getItem("currentEmployees"))
+            // the selected employee's value
+            const selectedEmployee = document.getElementById("AllocateEmployeeToShiftFormSelectEmployee").value
+            // the dropdown of the shifts for Allocating employees
+            const dropdownShifts = document.getElementById("AllocateEmployeeToShiftFormSelectShift")
+            // when the employee's name is changed, reset the shift's value to ""
+            dropdownShifts.value = ""
+            //make an array of the dropdown of shifts
+            let dropdownShiftsOptionsArray = Array.from(dropdownShifts.options)
+            if (selectedEmployee !== "") {
+                dropdownShiftsOptionsArray.forEach((shift) => {
+                    let selectedEmployeeInformation = currentEmployees.find(employee => selectedEmployee == employee._id)
+                    let selectedEmployeeShiftsID = selectedEmployeeInformation.ShiftsID
+                    if (selectedEmployeeShiftsID.includes(shift.value)) {
+                        shift.style.display = 'none'
+                    }
+                })
+            } else { // if no option is selected, show all of the shifts
+                dropdownShiftsOptionsArray.forEach((shift) => {
+                    shift.style.display = ''
+                })
+            }
+        }
+
+        async function updateActions() {
+            const newHeaders = new Headers()
+            const token = localStorage.getItem("token")
+            newHeaders.append("Content-Type", "application/json")
+            newHeaders.append("token", token)
+
+            const id_jsonplaceholder = localStorage.getItem("id_jsonplaceholder")
+            const date = new Date()
+
+            const resp = await fetch("http://127.0.0.1:8000/Users/Actions", {
+                method: "POST",
+                headers: newHeaders,
+                body: JSON.stringify({
+                    id_jsonplaceholder: id_jsonplaceholder,
+                    time_and_date: date
+                })
+            })
+
+            const data = await resp.json()
+            if (data.success == false) {
+                alert(data.error)
+                window.location.href = "./LoginPage.html"
+
+            }
+            return data
+        }
+
+    </script>
+
+</body>

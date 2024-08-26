@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NewEmployeePage</title>
+</head>
+
+<body onload="NewEmployee()">
+    <h1 id="Full Name"></h1>
+
+    <h2>Add Employee</h2><br>
+
+    <div id="error_happened"></div><br>
+
+
+    <div id="department"></div>
+
+    <strong><u>Add New Employee</u></strong><br><br>
+    <form id="PostEmployeeForm">
+        First Name: <input type="text" id="First Name" /><br><br>
+
+        Last Name: <input type="text" id="Last Name" /><br><br>
+
+        Start Work Year: <input type="Number" id="Start Work Year" /><br><br>
+
+        Department:<br>
+        <select id="dropdown_departments">
+            <option value="">Select a Department</option>
+        </select><br /><br>
+
+        <button type="submit">Add Employee</button><br><br>
+    </form>
+    <button onclick="window.location.href = './EmployeesPage.html' ">Cancel</button>
+
+    <script>
+        async function NewEmployee() {
+
+            // add real name of the user to the page
+            document.getElementById("Full Name").innerText = localStorage.getItem("Full Name")
+
+            //retrieve the token
+            token = localStorage.getItem("token")
+
+            // make a dropdown list for the departments
+            dropdown_departments = document.getElementById("dropdown_departments")
+            let departments = JSON.parse(localStorage.getItem("Departments"))
+            departments.forEach((department) => {
+                let department_option = document.createElement('option')
+                department_option.value = department._id
+                department_option.text = department.Name
+                dropdown_departments.appendChild(department_option)
+            })
+
+            // submit the form when the Add Employee button is clicked
+            document.getElementById("PostEmployeeForm").addEventListener('submit', async (event) => {
+                event.preventDefault()
+                await PostEmployee()
+                const updateActionsResponse = await updateActions()
+                if (updateActionsResponse.success == true) {
+                    alert("Employee has successfully been added")
+                    window.location.href = "./EmployeesPage.html"
+                }
+            })
+        }
+        // the back end works. Write a code to send a POST to the server so as to save the new Employee
+        async function PostEmployee() {
+            var requestBody = {
+                "First Name": document.getElementById("First Name").value,
+                "Last Name": document.getElementById("Last Name").value,
+                "Start Work Year": document.getElementById("Start Work Year").value,
+            }
+            //Check to see if Department was updated and update it if necessary
+            let dropdown_departments_value = document.getElementById("dropdown_departments").value
+
+            dropdown_departments_value !== "" ? requestBody.DepartmentID = dropdown_departments_value : null
+
+            const response = await fetch('http://127.0.0.1:8000/Employees', {
+
+                method: "POST",
+                headers: { token: token, "Content-Type": "application/json" },
+
+                body: JSON.stringify(requestBody),
+                redirect: "follow"
+            })
+            const the_response = await response.json()
+            if (the_response.success == false) {
+                const error_text = document.getElementById("error_happened")
+                error_text.innerText = `error: The following error happened when trying to log in: ${the_response.error}`
+                return
+            }
+            return the_response
+
+        }
+
+        async function updateActions() {
+            const newHeaders = new Headers()
+            const token = localStorage.getItem("token")
+            newHeaders.append("Content-Type", "application/json")
+            newHeaders.append("token", token)
+
+            const id_jsonplaceholder = localStorage.getItem("id_jsonplaceholder")
+            const date = new Date()
+
+            const resp = await fetch("http://127.0.0.1:8000/Users/Actions", {
+                method: "POST",
+                headers: newHeaders,
+                body: JSON.stringify({
+                    id_jsonplaceholder: id_jsonplaceholder,
+                    time_and_date: date
+                })
+            })
+            const data = await resp.json()
+            if (data.success == false) {
+                alert(data.error)
+                window.location.href = "./LoginPage.html"
+            }
+            return data
+        }
+
+    </script>
+
+
+</body>

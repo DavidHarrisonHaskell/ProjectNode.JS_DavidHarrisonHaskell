@@ -1,0 +1,87 @@
+<html>
+
+<body>
+    <h1>Login</h1>
+    username: <input type="text" id="username"><br>
+    email: <input type="text" id="email"><br>
+    <button onclick="login()">Login</button><br>
+
+    <div id="error_happened"></div>
+    <script>
+        async function login() {
+            const username = document.getElementById("username").value
+            const email = document.getElementById("email").value
+
+            resp = await fetch("http://127.0.0.1:8000/auth/login", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ username: username, email: email })
+            })
+            const data = await resp.json()
+            localStorage.setItem("id_jsonplaceholder", data.id_jsonplaceholder)
+
+            
+            const token = data.token
+            if (data.success == false) {
+                const error_text = document.getElementById("error_happened")
+                error_text.innerText = `error: The following error happened when trying to log in: ${data.error}`
+                return
+            }
+
+            const response = await fetch("http://127.0.0.1:8000/Employees", {
+                headers: { token: token }
+            })
+
+            const AllEmployees = await response.json()
+            if (AllEmployees.success == false) {
+                const error_text = document.getElementById("error_happened")
+                error_text.innerText = `error:The following error happened when trying to get the employees: ${AllEmployees.error}`
+                return
+            }
+            localStorage.setItem("username", username)
+            localStorage.setItem("email", email)
+            localStorage.setItem("token", token)
+            localStorage.setItem("AllEmployees", JSON.stringify(AllEmployees.Employees))
+
+            // keep the user logged out for the day if he has no actions left
+            // if the user does have actions left, logging in will deduct one action left from his permitted 
+            // number of actions for the day
+
+            const updateActionsResponse = await updateActions()
+            if (updateActionsResponse.success == false) {
+                return
+            }
+            window.location.href = "./EmployeesPage.html"
+
+
+        }
+
+        async function updateActions() {
+            const newHeaders = new Headers()
+            const token = localStorage.getItem("token")
+            newHeaders.append("Content-Type", "application/json")
+            newHeaders.append("token", token)
+
+            const id_jsonplaceholder = localStorage.getItem("id_jsonplaceholder")
+            const date = new Date()
+
+            const resp = await fetch("http://127.0.0.1:8000/Users/Actions", {
+                method: "POST",
+                headers: newHeaders,
+                body: JSON.stringify({
+                    id_jsonplaceholder: id_jsonplaceholder,
+                    time_and_date: date
+                })
+            })
+            const data = await resp.json()
+            if (data?.success == false) {
+                alert(data.error)
+                window.location.href = "./LoginPage.html"
+            }
+            return data
+        }
+
+    </script>
+</body>
+
+</html>

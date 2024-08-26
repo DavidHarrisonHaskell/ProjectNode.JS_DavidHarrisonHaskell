@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EditEmployeePage</title>
+</head>
+
+<body onload=EditEmployee()>
+
+    <h1 id="Full Name"></h1>
+
+    <h2>Edit Employee Page</h2>
+
+    <div id="error_happened"></div><br>
+
+    <div id="employee"></div>
+    Fill out the form to edit the employee's data:<br><br>
+    <form id="updateEmployeeForm">
+        First Name: <br>
+        <input type="text" id="First Name"><br><br>
+
+        Last Name:<br>
+        <input type="text" id="Last Name"><br><br>
+
+        Start Work Year:<br>
+        <input type="text" id="Start Work Year"><br><br>
+
+        Department:<br>
+        <input type="text" id="Department" readonly><br><br>
+
+
+
+        To register the employee to an existing Shift, select a shift:<br>
+        <select id="dropdown_shifts">
+            <option value="">Select a Shift</option>
+        </select><br><br>
+
+        To update the Department, select an option:<br>
+        <select id="dropdown_departments">
+            <option value="">Select a Department</option>
+        </select><br /><br>
+        <button type="submit" id="UpdateEmployeeData">Update</button><br><br><br>
+    </form>
+
+
+    Current Shifts: <br>
+    <table border="1">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Time</th>
+            </tr>
+        </thead>
+
+        <tbody id="table_body">
+
+        </tbody>
+    </table><br><br>
+
+    To delete all of the employee's data:<br>
+    <button id="DeleteEmployeeData" onclick="DeleteEmployeeData()">Delete Employee Data</button><br><br>
+
+
+    <button onclick="window.location.href = './EmployeesPage.html' ">Cancel</button>
+
+    <script>
+
+        async function EditEmployee() {
+            // await the form's submission and call the function UpdateEmployeeData() when the form is submitted
+            document.getElementById("updateEmployeeForm").addEventListener('submit', async (event) => {
+                event.preventDefault()
+                await UpdateEmployeeData()
+                const updateActionsResponse = await updateActions()
+                if (updateActionsResponse.success == true) {
+                    alert("The employee's information was updated")
+                    window.location.href = './EmployeesPage.html'
+                }
+            })
+
+            // showing the user's Full Name
+            document.getElementById("Full Name").innerText = localStorage.getItem("Full Name")
+
+            // the primary reason of getting this information is to get the employee id so 
+            // I can fetch more information about the employee through http://127.0.0.1:8000/Employees/:id
+            let Information = JSON.parse(localStorage.getItem("EmployeeInformation"))
+            // get updated information from http://127.0.0.1:8000/Employees/:id
+            token = localStorage.getItem("token")
+            const response = await fetch(`http://127.0.0.1:8000/Employees/Information/${Information.id}`, {
+                headers: { token: token }
+            })
+            const EmployeeInformation = await response.json()
+            if (EmployeeInformation.success == false) {
+                const error_text = document.getElementById("error_happened")
+                error_text.innerText = `error: The following error happened when trying to log in: ${EmployeeInformation.error}`
+                return
+            }
+
+            //place initial values in the .html document
+            //First Name
+            document.getElementById("First Name").value = EmployeeInformation.Employee.Employee["First Name"]
+
+            //Last Name
+            document.getElementById("Last Name").value = EmployeeInformation.Employee.Employee["Last Name"]
+
+            //Start Work Year
+            document.getElementById("Start Work Year").value = EmployeeInformation.Employee.Employee["Start Work Year"]
+
+            //department
+            if (EmployeeInformation.Employee.Department !== undefined) {
+                document.getElementById("Department").value = EmployeeInformation.Employee.Department?.Name
+            } else {
+                document.getElementById("Department").value = ""
+            }
+
+            //shifts
+            table_body = document.getElementById("table_body")
+            list_of_shifts = EmployeeInformation.Employee.list_of_Shifts
+            list_of_shifts.forEach((shift) => {
+                let tr = document.createElement("tr")
+
+                const Date = document.createElement("td")
+                Date.innerText = shift[0]
+                tr.appendChild(Date)
+
+                const Time = document.createElement("td")
+                Time.innerText = shift[1]
+                tr.appendChild(Time)
+
+                table_body.appendChild(tr)
+            })
+
+            const response_getShifts = await fetch("http://127.0.0.1:8000/Employees/Shifts", {
+                headers: { token: token }
+            })
+            const Shifts = await response_getShifts.json()
+            if (Shifts.success == false) {
+                const error_text = document.getElementById("error_happened")
+                error_text.innerText = `error: The following error happened when trying to log in: ${Shifts.error}`
+                return
+            }
+
+            // make a dropdown list for the shifts
+            dropdown_shifts = document.getElementById("dropdown_shifts")
+            //exclude all shifts that the employee already has
+
+            const employee_shifts = Shifts.Shifts.filter((shift) => !EmployeeInformation.Employee.Employee.ShiftsID.includes(shift._id))
+            //create options for the shifts dropdown list
+            employee_shifts.forEach((Shift) => {
+
+                let shift_option = document.createElement('option')
+                shift_option.value = Shift._id
+                shift_option.text = `${Shift.Date.substring(0, 10)}: from ${Shift["Starting Hour"]} to ${Shift["Ending Hour"]}`
+
+                dropdown_shifts.appendChild(shift_option)
+            })
+
+            // make a dropdown list for the departments
+            dropdown_departments = document.getElementById("dropdown_departments")
+            let departments = JSON.parse(localStorage.getItem("Departments"))
+            //exclude the departments current department from the update options
+            if (EmployeeInformation.Employee.Employee.DepartmentID !== "") {
+                departments = departments.filter((department) => department._id !== EmployeeInformation.Employee.Employee.DepartmentID)
+            }
+            //create options for the dropdown list of departments
+            departments.forEach((department) => {
+                let department_option = document.createElement('option')
+                department_option.value = department._id
+                department_option.text = department.Name
+
+                dropdown_departments.appendChild(department_option)
+            })
+
+
+        }
+
+        async function DeleteEmployeeData() {
+            let Information = JSON.parse(localStorage.getItem("EmployeeInformation"))
+            token = localStorage.getItem("token")
+            const response = await fetch(`http://127.0.0.1:8000/Employees/Information/${Information.id}`, {
+                method: "DELETE",
+                headers: { token: token, "Content-Type": "application/json" },
+                redirect: "follow"
+            })
+            const the_response = await response.json()
+            if (the_response.success == false) {
+                const error_text = document.getElementById("error_happened")
+                error_text.innerText = `error: The following error happened when trying to log in: ${the_response.error}`
+                return
+            }
+            const updateActionsResponse = await updateActions()
+                if (updateActionsResponse.success == true) {
+                    alert("The employee's information was deleted")
+                    window.location.href = './EmployeesPage.html'
+                }
+        }
+
+        async function UpdateEmployeeData() {
+            let Information = JSON.parse(localStorage.getItem("EmployeeInformation"))
+
+            token = localStorage.getItem("token")
+
+            // get a list of the shifts - test
+            const get = await fetch(`http://127.0.0.1:8000/Employees/Information/${Information.id}`, {
+                headers: { token: token }
+            })
+            const get_response = await get.json()
+            //list of the shifts - test
+            let get_response_shifts = get_response.Employee.Employee.ShiftsID
+            let get_response_shifts_updated = [...get_response_shifts, document.getElementById("dropdown_shifts").value]
+
+            //create the requestBody for the PUT request to update the database
+            var requestBody = {
+                "First Name": document.getElementById("First Name").value,
+                "Last Name": document.getElementById("Last Name").value,
+                "Start Work Year": document.getElementById("Start Work Year").value,
+            }
+            //Check to see if Department was updated and update it if necessary
+            let dropdown_departments_value = document.getElementById("dropdown_departments").value
+            let dropdown_shifts_value = document.getElementById("dropdown_shifts").value
+
+            dropdown_departments_value !== "" ? requestBody.DepartmentID = dropdown_departments_value : null
+
+            //Check to see if ShiftsID was updated and update it if necessary
+            dropdown_shifts_value !== "" && !get_response_shifts.includes(dropdown_shifts_value) ? requestBody.ShiftsID = get_response_shifts_updated : null
+            if (get_response_shifts.includes(dropdown_shifts_value) && dropdown_shifts_value !== "") {
+                alert("Employee has already been registered to that shift")
+            }
+            const response = await fetch(`http://127.0.0.1:8000/Employees/Information/${Information.id}`, {
+
+                method: "PUT",
+                headers: { token: token, "Content-Type": "application/json" },
+
+                body: JSON.stringify(requestBody),
+                redirect: "follow"
+            })
+            const the_response = await response.json()
+            if (the_response.success == false) {
+                const error_text = document.getElementById("error_happened")
+                error_text.innerText = `error: The following error happened when trying to log in: ${the_response.error}`
+                return
+            }
+        }
+
+        async function updateActions() {
+            const newHeaders = new Headers()
+            const token = localStorage.getItem("token")
+            newHeaders.append("Content-Type", "application/json")
+            newHeaders.append("token", token)
+
+            const id_jsonplaceholder = localStorage.getItem("id_jsonplaceholder")
+            const date = new Date()
+
+            const resp = await fetch("http://127.0.0.1:8000/Users/Actions", {
+                method: "POST",
+                headers: newHeaders,
+                body: JSON.stringify({
+                    id_jsonplaceholder: id_jsonplaceholder,
+                    time_and_date: date
+                })
+            })
+            const data = await resp.json()
+            if (data.success == false) {
+                alert(data.error)
+                window.location.href = "./LoginPage.html"
+            }
+            return data
+        }
+
+    </script>
+</body>

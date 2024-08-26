@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EditDepartmentPage</title>
+</head>
+
+<body onload="EditDepartment()">
+    <h1 id="Full Name"></h1>
+
+
+    <h2>Edit Department Page</h2><br>
+    <div id="department"></div><br><br>
+
+    <div id="error_happened"></div><br><br>
+
+
+    Fill out the form to edit the department's data:<br><br>
+    <form id="UpdateDepartmentDataForm" style="border: 1px solid black; padding: 10px; display: inline-block">
+        Name: <br>
+        <input type="text" id="Name" /><br><br>
+
+        Manager:<br>
+        <input type="text" id="Manager" value="" placeholder="" readonly /><br>
+        <select id="dropdownManagers">
+            <option value="">Select a Manger</option>
+        </select><br><br>
+
+        <button type="submit">Update</button><br><br>
+    </form><br><br>
+
+    <button onclick="DeleteDepartment()">Delete Department</button><br><br>
+
+    Add an Employee to this department:<br><br>
+    <select id="EmployeesFromDifferentDepartments">
+        <option value="">Select an Employee</option>
+    </select><br><br>
+
+
+    <button onclick="AddEmployee()">Add</button><br><br>
+
+    <button onclick="window.location.href = './EmployeesPage.html' ">Cancel</button>
+
+
+    <script>
+        async function EditDepartment() {
+            // await the form's submission and call the function UpdateDepartment() when the form is submitted
+            document.getElementById("UpdateDepartmentDataForm").addEventListener('submit', async (event) => {
+                event.preventDefault()
+                await UpdateDepartmentData()
+                const updateActionsResponse = await updateActions()
+                if (updateActionsResponse.success == true) {
+                    alert("The Department was successfully updated")
+                    window.location.href = "./EmployeesPage.html"
+                }
+
+            })
+
+
+            //insert the user's Full Name into the .html page
+            document.getElementById("Full Name").innerText = localStorage.getItem("Full Name")
+
+            //retrieve the selected Department's information from localStorage
+            let Department = JSON.parse(localStorage.getItem("DepartmentInformation"))
+
+            //retrieve the token from localStorage
+            token = localStorage.getItem("token")
+
+            // fetch the data of the selected Department
+            const GETresponse = await fetch(`http://127.0.0.1:8000/Departments/${Department._id}`, {
+                headers: { token: token }
+            })
+            const DepartmentInformation = await GETresponse.json()
+            if (DepartmentInformation.success == false) {
+                const error_text = document.getElementById("error_happened")
+                error_text.innerText = `error: The following error happened when trying to log in: ${DepartmentInformation.error}`
+                return
+            }
+
+            // set default value of Name of Department
+            document.getElementById("Name").value = DepartmentInformation.Department.Name
+
+            //fetch all of the Employees
+            const response_employees = await fetch('http://127.0.0.1:8000/Employees', {
+                headers: { token: token }
+            })
+            const EmployeeInformation = await response_employees.json()
+            if (EmployeeInformation.success == false) {
+                const error_text = document.getElementById("error_happened")
+                error_text.innerText = `error: The following error happened when trying to log in: ${EmployeeInformation.error}`
+                return
+            }
+
+            // create a list of potential managers
+            let potentialManagers = EmployeeInformation.Employees
+
+            //find the current manager, if one exists, and update the form
+            const Manager = EmployeeInformation.Employees.find(employee => employee._id == DepartmentInformation.Department.Manager)
+            if (Manager !== undefined) {
+                document.getElementById("Manager").value = `${Manager["First Name"]} ${Manager["Last Name"]}`
+
+                //create a list of potential managers from which the user can update the manager
+                potentialManagers = EmployeeInformation.Employees.filter(employee => employee._id !== Manager._id)
+
+            } else {
+                document.getElementById("Manager").placeholder = 'No Manager Currently'
+            }
+
+
+            // use the list of potential managers to make options in the Managers dropdown
+            let dropdownManagers = document.getElementById('dropdownManagers')
+
+            potentialManagers.forEach((potentialManager) => {
+                let potentialManagerOption = document.createElement('option')
+                potentialManagerOption.value = potentialManager._id
+                potentialManagerOption.text = `${potentialManager['First Name']} ${potentialManager['Last Name']}`
+
+                dropdownManagers.appendChild(potentialManagerOption)
+            })
+
+            //add a a list of employees which are not part of the current department that can be added to it
+            let EmployeesFromDifferentDepartments = document.getElementById('EmployeesFromDifferentDepartments')
+
+            // filter out employees which are already in the department and add an option of each remaining employee to the dropdown list
+            const EmployeesFromDifferentDepartmentsList = EmployeeInformation.Employees.filter((employee) => employee.DepartmentID !== Department._id)
+            EmployeesFromDifferentDepartmentsList.forEach((employee) => {
+                let employeeOption = document.createElement('option')
+                employeeOption.value = employee._id
+                employeeOption.text = `${employee['First Name']} ${employee['Last Name']}`
+
+                EmployeesFromDifferentDepartments.appendChild(employeeOption)
+            })
+        }
+
+        async function UpdateDepartmentData() {
+            //retrieve the selected Department's information from localStorage
+            let Department = JSON.parse(localStorage.getItem("DepartmentInformation"))
+
+            // Upon clicking the Update button, send a PUT request to the server to update the Name of the Department and the ID of the Manager
+            // IMPORTANT - when I update a manager, also make sure to change his DepartmentID so that it matches his new department.
+            // Do that in the DepartmentsService.js file.
+
+            var requestBody = {}
+
+            //Check to see if Department Name and/or Manager was updated and update it if necessary
+            let departmentNameValue = document.getElementById("Name").value
+            departmentNameValue ? requestBody.Name = departmentNameValue : null
+
+            let dropdownManagersValue = document.getElementById("dropdownManagers").value
+            dropdownManagersValue ? requestBody.Manager = dropdownManagersValue : null
+
+            const PUTresponse = await fetch(`http://127.0.0.1:8000/Departments/${Department._id}`, {
+
+                method: "PUT",
+                headers: { token: token, "Content-Type": "application/json" },
+
+                body: JSON.stringify(requestBody),
+                redirect: "follow"
+            })
+            const the_response = await PUTresponse.json()
+            if (the_response.success == false) {
+                const error_text = document.getElementById("error_happened")
+                error_text.innerText = `error: The following error happened when trying to log in: ${the_response.error}`
+                return
+            }
+
+        }
+
+        async function AddEmployee() {
+            const EmployeeToAdd = document.getElementById("EmployeesFromDifferentDepartments").value
+            if (EmployeeToAdd !== "") { // ensure that an employee was selected
+
+                let requestBody = {}
+                let Department = JSON.parse(localStorage.getItem("DepartmentInformation"))
+                requestBody.DepartmentID = Department._id
+
+                const response = await fetch(`http://127.0.0.1:8000/Employees/Information/${EmployeeToAdd}`, {
+
+                    method: "PUT",
+                    headers: { token: token, "Content-Type": "application/json" },
+
+                    body: JSON.stringify(requestBody),
+                    redirect: "follow"
+                })
+                const the_response = await response.json()
+                if (the_response.success == false) {
+                    const error_text = document.getElementById("error_happened")
+                    error_text.innerText = `error: The following error happened when trying to log in: ${the_response.error}`
+                    return
+                }
+                const updateActionsResponse = await updateActions()
+                if (updateActionsResponse.success == true) {
+                    alert("Employee was successfully added")
+                    window.location.href = "./EmployeesPage.html"
+                }
+            }
+        }
+
+        async function DeleteDepartment() {
+            let Information = JSON.parse(localStorage.getItem("EmployeeInformation"))
+            token = localStorage.getItem("token")
+            let Department = JSON.parse(localStorage.getItem("DepartmentInformation"))
+            const response = await fetch(`http://127.0.0.1:8000/Departments/${Department._id}`, {
+                method: "DELETE",
+                headers: { token: token, "Content-Type": "application/json" },
+                redirect: "follow"
+            })
+            const the_response = await response.json()
+            if (the_response.success == false) {
+                const error_text = document.getElementById("error_happened")
+                error_text.innerText = `error: The following error happened when trying to log in: ${the_response.error}`
+                return
+            }
+
+            const updateActionsResponse = await updateActions()
+            if (updateActionsResponse.success == true) {
+                alert("The Department was successfully deleted")
+                window.location.href = "./DepartmentPage.html"
+            }
+        }
+
+        async function updateActions() {
+            const newHeaders = new Headers()
+            const token = localStorage.getItem("token")
+            newHeaders.append("Content-Type", "application/json")
+            newHeaders.append("token", token)
+
+            const id_jsonplaceholder = localStorage.getItem("id_jsonplaceholder")
+            const date = new Date()
+
+            const resp = await fetch("http://127.0.0.1:8000/Users/Actions", {
+                method: "POST",
+                headers: newHeaders,
+                body: JSON.stringify({
+                    id_jsonplaceholder: id_jsonplaceholder,
+                    time_and_date: date
+                })
+            })
+            const data = await resp.json()
+            if (data.success == false) {
+                alert(data.error)
+                window.location.href = "./LoginPage.html"
+            }
+            return data
+        }
+
+    </script>
+</body>
