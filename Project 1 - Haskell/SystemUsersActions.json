@@ -275,6 +275,36 @@
       "maxActions": 15,
       "date": "27/8/2024",
       "actionAllowed": 13
+    },
+    {
+      "id": "1",
+      "maxActions": 15,
+      "date": "27/8/2024",
+      "actionAllowed": 12
+    },
+    {
+      "id": "1",
+      "maxActions": 15,
+      "date": "27/8/2024",
+      "actionAllowed": 11
+    },
+    {
+      "id": "1",
+      "maxActions": 15,
+      "date": "27/8/2024",
+      "actionAllowed": 10
+    },
+    {
+      "id": "1",
+      "maxActions": 15,
+      "date": "27/8/2024",
+      "actionAllowed": 9
+    },
+    {
+      "id": "1",
+      "maxActions": 15,
+      "date": "27/8/2024",
+      "actionAllowed": 8
     }
   ]
 }

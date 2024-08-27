@@ -59,7 +59,48 @@ UsersController.js explanation:
 
 
 ### Front End with HTML
+Every page after logging in displays the real name of the user, pulled from MongoDB. Certain features of each HTML page:  
 
+- DepartmentPage.html
+    - A button for generating a table of departments
+    - Button for adding a new department (redirect to NewDepartmentPage.html)  
+
+- EditDeparmtentPage.html
+    - Update a department's manager
+    - Delete a department
+    - Assign an employee to a department  
+
+- EditEmployeePage.html
+    - Update an employee's information
+    - Register an employee to an existing shift
+    - A list of an employee's current shifts
+    - Delete the employee's data  
+
+- EmployeesPage.html
+    - Generate a table which has each employee's full name, department, and shifts
+    - Filter the table by department
+    - Button for adding an employee (redirect to NewEmployeePage.html)  
+
+- LoginPage.html  
+    - Entering username and email of a user to log into the website  
+
+- NewDepartmentPage.html
+    - Creating a new department and selecting that department's manager from amongst the employees who are not currently managers.  
+
+- NewEmployeePage.html
+    - Add a new Employee which includes entering that employee's first name, last name, start work year, and selecting a department.  
+
+- ShiftsPage.html
+    - Create a new shift
+    - Change an existing shift
+    - Allocate an employee to a selected shift  
+
+- UsersPage.html
+    - A button for generating a table of users which displays each user's name, maximum number of actions allowed, and the current number of actions allowed for the current day stored in the website's MongoDB database.
+
+
+
+    
 
 
 
