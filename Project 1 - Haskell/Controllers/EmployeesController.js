@@ -106,16 +106,4 @@ router.get("/Shifts", async (req, res) => {
     }
 })
 
-// router.get("/Department", async (req,res) => {
-//     try {
-//         const token = req.headers["token"]
-//         if (!token) { return res.json({ success: false, error: "no token provided" }) }
-
-//         const decoded = jwt.verify(token, "secret")
-//         const DepartmentInformation = await EmployeesService.getEmployeeDepartmentInformationService()
-//     } catch (e) {
-//         return res.json({success: false, error: e.message})
-//     }
-// })
-
 module.exports = router
