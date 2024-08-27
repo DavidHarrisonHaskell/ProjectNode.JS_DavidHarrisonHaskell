@@ -19,7 +19,7 @@ departments, employees, and shifts.
 - Once a user finished his maximum number of actions for the day, he is alerted with a message and then logged out for the day.
 - Every action is logged to the SystemUsersActions.json file.  
 - To log in, the user must enter his username and email. The website checks jsonplaceholder.typicode.com/users to see that such a username and email exists and then provides a token to the user. The user is then able to log in and perform up to the maximum number of actions for that day.  
-
+ 
 #### index.js
 - This file is where express is set up and which provides routers to the Departments, Employees, Login, Shifts, or Users Controllers.  
 
