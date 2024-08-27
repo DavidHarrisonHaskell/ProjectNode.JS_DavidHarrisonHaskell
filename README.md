@@ -23,6 +23,9 @@ departments, employees, and shifts.
 #### index.js
 - This file is where express is set up and which provides routers to the Departments, Employees, Login, Shifts, or Users Controllers.  
 
+#### SystemUsersActions.json
+- A log of the actions which included the user's id, maximum number of actions allowed, date, and the remaining number of actions allowed for that day.
+
 #### **Configs**
 This folder contains the configsMongoDB.js file which connects the server to MongoDB.
 
