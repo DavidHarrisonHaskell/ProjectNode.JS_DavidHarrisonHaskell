@@ -26,23 +26,36 @@ departments, employees, and shifts.
 #### **Configs**
 This folder contains the configsMongoDB.js file which connects the server to MongoDB.
 
-#### **Controllers**
+#### **Controllers, Services, Repositories, Models**
+The general flow of the project has the controllers referring to the services which then refer to the repositories which access the MongoDB models of the relevant collection. For the sake of simplicity, see the following descriptions of the controllers to understand the server's structure. Then, check the files of the relevant services, repositories, and models for further details.  
 
-##### Departments Controller
-  DepartmentsController.js explanation:  
-    - getting a specific department's information or all of the departments' information from MongoDB.  
-    - posting a new department  
-    - changing a department  
-    - deleting a department  
+##### <u>Departments Controller</u>
+  DepartmentsController.js explanation:
+  - getting a specific department's information or all of the departments' information from MongoDB.  
+  - posting a new department  
+  - changing a department  
+  - deleting a department  
 
-##### Employees Controller
+##### <u>Employees</u>
 EmployeesController.js explanation:
-    - getting all of the employees' information from MongoDB, or more customized information using the "Employees/Information" router
-    - getting customized information about an employee, updating an employee, or deleting a specific employee through the "Employees/Information/:id" router
-    - getting information about all of the shifts
+- getting all of the employees' information from MongoDB, or more customized information using the "Employees/Information" router
+- getting customized information about an employee, updating an employee, or deleting a specific employee through the "Employees/Information/:id" router
+- getting information about all of the shifts  
 
-##### Login Controller
+##### <u>Login Controller</u>
 LoginController.js explanation:  
+- checks the REST API of the jsonplaceholder website mentioned before and, if the username and password are correct, gets a token which the user will use to access the website  
+
+##### <u>Shifts Controller</u>  
+ShiftsController.js explanation:  
+- get all of the shifts
+- post a new shift
+- update an existing shift
+
+##### <u>Users Controller</u>  
+UsersController.js explanation:  
+- getting all of the users' information
+- posting an action of the user
 
 
 ### Front End with HTML
