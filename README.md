@@ -2,6 +2,9 @@
  <u>A Node.JS project utilizing Express, MongoDB, and HTML to create  
   a website for managing employees, managers, departments, etc. of a factory</u>
 
+## Demo
+[![Image ALT TEXT HERE](https://img.youtube.com/vi/fNNoSSuHsgE/0.jpg)](https://youtube.com/watch?v=fNNoSSuHsgE)
+
 ## Introduction
 - The goal of the website is to create a a website that manages a factory. 
 - The factory is comprised of employees. Each employee belongs to a department and can work several shifts. 
